@@ -102,7 +102,7 @@ class Pipe:
 
     def set_height(self):
         self.height = random.randrange(50, 450)
-        self.top = self.height - self.PIP_TOP.get_height() #where the bottome of the top pipe will be
+        self.top = self.height - self.PIPE_TOP.get_height() #where the bottome of the top pipe will be
         self.bottom = self.height + self.GAP
 
     def move(self):
@@ -110,20 +110,65 @@ class Pipe:
 
     def draw(self, win):
         win.blit(self.PIPE_TOP, (self.x, self.top)) #draws top pipe
-        win.blit(self.PIPE_BOTTOM, (self.x, self.bottom)) #draws bottom pipe
+        win.blit(self.PIP_BOTTOM, (self.x, self.bottom)) #draws bottom pipe
 
-    def collide(self, bird, win):
+    def collide(self, bird):
+        bird_mask = bird.get_mask()#masks are what surround sprites to help determine collisions
+        top_mask = pygame.mask.from_surface(self.PIPE_TOP)
+        bottom_mask = pygame.mask.from_surface(self.PIPE_BOTTOM)
+
+        top_offset = (self.x - bird.x, self.top - round(bird.y)) #no decimals so round bird off
+        bottom_offset = (self.x - bird.x, self.bottom - round(bird.y))
+
+        b_point = bird_mask.overlap(bottom_mask, bottom_offset) #if no collision returns none
+        t_point = bird_mask.overlap(top_mask, top_offset)
+
+        if t_point or b_point:
+            return True
+
+        return False
 
 
+class Base:
+    VEL = 5 #need to have same velocity so they are moving in conjunction
+    WIDTH = BASE_IMG.get_width()
+    IMG = BASE_IMG
 
-def draw_window(win, bird):
+    def __init__(self, y):
+        self.y = y
+        self.x1 = 0
+        self.x2 = self.WIDTH
+
+    def move(self):
+        self.x1 -= self.VEL # uses x1 and x2 to have moving background
+        self.x2 -= self.VEL #x1 is on screen while x2 comes in moving left from right to replace x1
+        #cycle repeats as x1 replaces x2 and x2 replaces x1 for the background
+        if self.x1 + self.WIDTH < 0:
+            self.x1 = self.x2 + self.WIDTH
+
+        if self.x2 + self.WIDTH < 0: #cycles back if off screen
+            self.x2 = self.x1 + self.WIDTH
+
+    def draw(self, win):
+        win.blit(self.IMG, (self.x1, self.y))
+        win.blit(self.IMG, (self.x2, self.y))
+
+
+def draw_window(win, bird, pipes, base):
     win.blit(BG_IMG, (0,0))#blit means to draw to window
+    for pipe in pipes: #pipes is a list due to multiple pipes appearing on screen at once
+        pipe.draw(win)
+
+    base.draw(win)
+
     bird.draw(win)
     pygame.display.update()
 
 
 def main():
-    bird = Bird(200,200) #create bird object
+    bird = Bird(230,350) #create bird object
+    base = Base(730)#bottom of screen
+    pipes = [Pipe(700)]
     win = pygame.display.set_mode((WIN_WIDTH, WIN_HEIGHT)) #shorthand of window
     clock = pygame.time.Clock()
 
@@ -134,8 +179,12 @@ def main():
             if event.type == pygame.QUIT:
                 run = False
 
-        bird.move()
-        draw_window(win, bird)
+        #bird.move()
+        for pipe in pipes:
+            pipe.move()
+
+        base.move()
+        draw_window(win, bird, pipes, base)
 
     pygame.quit()
     quit()
